@@ -71,6 +71,13 @@ ifeq ($(DUALCORE),1)
 EMU_CXXFLAGS += -DDUALCORE
 endif
 
+ifeq ($(DISABLE_RANDOM_INIT),1)
+else
+  VEXTRA_FLAGS += +define+RANDOMIZE_REG_INIT111
+  VEXTRA_FLAGS += +define+RANDOMIZE_MEM_INIT
+  VEXTRA_FLAGS += +define+RANDOMIZE_GARBAGE_ASSIGN
+endif
+
 USE_BIN ?= 0
 ifeq ($(USE_BIN),1)
 EMU_CXXFLAGS += -DUSE_BIN
@@ -82,9 +89,6 @@ VERILATOR_FLAGS =                   \
   --compiler clang                  \
   +define+VERILATOR=1               \
   +define+PRINTF_COND=1             \
-  +define+RANDOMIZE_REG_INIT        \
-  +define+RANDOMIZE_MEM_INIT        \
-  +define+RANDOMIZE_GARBAGE_ASSIGN  \
   +define+RANDOMIZE_DELAY=0         \
   -Wno-STMTDLY -Wno-WIDTH           \
   $(VEXTRA_FLAGS)                   \

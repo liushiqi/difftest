@@ -35,6 +35,9 @@
 # Enable co-simulation with DRAMsim3
 # WITH_DRAMSIM3 ?= 1
 
+# Disable random reg / mem init
+# DISABLE_RANDOM_INIT ?= 1
+
 # Default output period control
 # output will be generated when (B<=GTimer<=E) && (L < loglevel)
 # use 'emu -h' to see more details
