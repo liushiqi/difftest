@@ -22,12 +22,13 @@
 #include "nemuproxy.h"
 #include "goldenmem.h"
 #include "device.h"
+#include "flash.h"
 #include "runahead.h"
 #include <getopt.h>
 #include <signal.h>
 #include <unistd.h>
 #ifdef  DEBUG_TILELINK
-#include "tllogger.h"
+#include "logger.h"
 #endif
 #include "ram.h"
 #include "zlib.h"
@@ -36,11 +37,6 @@
 #include "remote_bitbang.h"
 
 extern remote_bitbang_t * jtag;
-
-#define FORK_PRINTF(format, args...) \
-        printf("[FORK_INFO pid(%d)]  " format, getpid(), ##args); \
-        fflush(stdout); \
-
 
 static inline void print_help(const char *file) {
   printf("Usage: %s [OPTION...]\n", file);
@@ -197,7 +193,11 @@ Emulator::Emulator(int argc, const char *argv[]):
   reset_ncycles(10);
 
   // init ram
+#ifdef FLASH_BIN
+  init_flash(args.image);
+#endif
   init_ram(args.image);
+
 #ifdef DEBUG_TILELINK
   // init logger
   init_logger(args.dump_tl);
@@ -236,6 +236,7 @@ Emulator::Emulator(int argc, const char *argv[]):
 Emulator::~Emulator() {
   ram_finish();
   assert_finish();
+  finish_flash();
 
 #ifdef VM_SAVABLE
   if (args.enable_snapshot && trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED) {
@@ -348,7 +349,7 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
       printf("[ERROR] please enable --trace option in verilator when using lightSSS...(You may forget EMU_TRACE when compiling.)\n");
       FAIT_EXIT
 #endif
-    FORK_PRINTF("enable fork debugging...\n")
+    printf("[INFO] enable fork debugging...\n");
   }
 
   pid_t pid  = -1;
@@ -366,13 +367,10 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
 #endif
 
   while (!Verilated::gotFinish() && trapCode == STATE_RUNNING) {
+    // cycle limitation
     if(waitProcess && cycles != 0 && cycles == forkshm.info->endCycles){
-      FORK_PRINTF("checkpoint has reached the main process abort point :%d\n", cycles)
-    }
-
-    if(waitProcess && cycles != 0 && cycles == forkshm.info->endCycles + STEP_FORWARD_CYCLES){
       trapCode = STATE_ABORT;
-      break;  
+      break;    
     }
 
     if (!max_cycle) {
@@ -397,7 +395,6 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
     if (signal_num != 0) {
       trapCode = STATE_SIG;
     }
-
     if (trapCode != STATE_RUNNING) {
       break;
     }
@@ -479,13 +476,12 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
 #endif
           forkshm.shwait();
           //checkpoint process wakes up
-          //start wave dumping
-          enable_waveform = (forkshm.info->oldest == getpid());
-          if(enable_waveform){
-            FORK_PRINTF("the oldest checkpoint start to dump wave and dump nemu log...\n")  
 #if EMU_THREAD > 1
           dut_ptr->__Vm_threadPoolp = new VlThreadPool(dut_ptr->contextp(), EMU_THREAD - 1, 0);
 #endif
+          //start wave dumping
+          enable_waveform = (forkshm.info->oldest == getpid());
+          if(enable_waveform){
             //dump wave
 #if VM_TRACE == 1      
             Verilated::traceEverOn(true);	
@@ -521,36 +517,29 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
   if(args.enable_runahead){
     runahead_cleanup(); // remove all checkpoints
   }
-  
+
   if(args.enable_fork){
     if(waitProcess) {
-      FORK_PRINTF("checkpoint process: dump wave complete, exit...\n")
-      printf("--------------- CHECHPOINT INFO START(PID %d) ----------------\n", getpid());
-      display_trapinfo();
-      printf("---------------  CHECHPOINT INFO END(PID %d)  ----------------\n", getpid());
+      printf("[%d] checkpoint process: dump wave complete, exit...\n",getpid());
       return cycles;
-    } else if(trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED && trapCode != STATE_SIG){
+    } else if(trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED){
       forkshm.info->endCycles = cycles;
       forkshm.info->oldest = pidSlot.back();
       forkshm.info->notgood = true;
       forkshm.info->flag = true;
       waitpid(pidSlot.back(),&status,0);
-      printf("*************** MAIN INFO START(PID %d) ***************\n", getpid());
       display_trapinfo();
-      printf("*************** MAIN INFO END(PID %d)   ***************\n", getpid());
       return cycles;
     } else {
       //when reach maximum instruction, clear the checkpoint process
-      FORK_PRINTF("clear processes...\n")
+      printf("[main process] clear processes...\n");
       while(!pidSlot.empty()){
         pid_t temp = pidSlot.back();
         pidSlot.pop_back();
         kill(temp, SIGKILL);
         slotCnt--;
       }
-
       display_trapinfo();
-      
       return cycles;
     } 
   }
@@ -602,7 +591,7 @@ inline char* Emulator::cycle_wavefile(uint64_t cycles, time_t t) {
   assert(noop_home != NULL);
   int len = snprintf(buf, 1024, "%s/build/%s_%ld", noop_home, buf_time, cycles);
   strcpy(buf + len, ".vcd");
-  FORK_PRINTF("dump wave to %s...\n", buf);
+  printf("dump wave to %s...\n", buf);
   return buf;
 }
 
@@ -677,13 +666,13 @@ ForkShareMemory::ForkShareMemory() {
     perror("Fail to ftok\n");
     FAIT_EXIT
   }
-  FORK_PRINTF("key num:%d\n", key_n);
+  printf("key num:%d\n", key_n);
 
   if ((shm_id = shmget(key_n, 1024, 0666 | IPC_CREAT))==-1) {
     perror("shmget failed...\n");
     FAIT_EXIT
   }
-  FORK_PRINTF("share memory id:%d\n", shm_id);
+  printf("share memory id:%d\n", shm_id);
 
   if ((info = (shinfo*)(shmat(shm_id, NULL, 0))) == NULL ) {
     perror("shmat failed...\n");

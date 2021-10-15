@@ -19,4 +19,7 @@
 
 #include "common.h"
 
+extern "C" void init_flash(const char *img);
+extern "C" void finish_flash();
+
 #endif // __FLASH_H

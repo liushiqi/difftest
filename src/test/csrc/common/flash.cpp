@@ -22,7 +22,7 @@ FILE *flash_fp = NULL;
 extern "C" {
 
 void flash_read(uint32_t addr, uint64_t *data) {
-#ifdef USE_BIN
+#ifdef FLASH_BIN
   fseek(flash_fp, addr, SEEK_SET);
   fread(data, 8, 1, flash_fp);
 #else
@@ -40,10 +40,10 @@ void flash_read(uint32_t addr, uint64_t *data) {
 #endif
 }
 
-void init_flash(void) {
-#ifdef USE_BIN
+void init_flash(const char *img) {
+#ifdef FLASH_BIN
 
-  flash_fp = fopen("/home/jy/Project/nexus-am/tests/cputest/build/dummy-riscv64-noop.bin", "r");
+  flash_fp = fopen(img, "r");
   if(!flash_fp)
   {
     eprintf(ANSI_COLOR_MAGENTA "[warning] flash img not found\n");
@@ -51,6 +51,12 @@ void init_flash(void) {
   printf("use bin as a flash!\n"); 
 #else 
   printf("use fixed 3 instructions!\n");
+#endif
+}
+
+void  finish_flash(){
+#ifdef FLASH_BIN
+  fclose(flash_fp);
 #endif
 }
 
