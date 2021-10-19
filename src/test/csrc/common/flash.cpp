@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-10-19 12:59:48
+ * @LastEditTime: 2021-10-19 12:59:49
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: /difftest/src/test/csrc/common/flash.cpp
+ */
 /***************************************************************************************
 * Copyright (c) 2020-2021 Institute of Computing Technology, Chinese Academy of Sciences
 * Copyright (c) 2020-2021 Peng Cheng Laboratory
@@ -61,3 +69,4 @@ void  finish_flash(){
 }
 
 }
+ 

@@ -66,6 +66,7 @@ struct EmuArgs {
   const char *image;
   const char *snapshot_path;
   const char *wave_path;
+  const char *flash_img;
   bool enable_waveform;
   bool enable_snapshot;
   bool force_dump_result;

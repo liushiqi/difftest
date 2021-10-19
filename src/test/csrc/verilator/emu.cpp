@@ -59,6 +59,9 @@ static inline void print_help(const char *file) {
 #ifdef DEBUG_TILELINK
   printf("      --dump-tl              dump tilelink transactions\n");
 #endif
+#ifdef FLASH_BIN
+  printf("      --flash-img            use image to init flash\n");
+#endif
   printf("      --sim-run-ahead        let a fork of simulator run ahead of commit for perf analysis\n");
   printf("      --wave-path=FILE       dump waveform to a specified PATH\n");
   printf("      --enable-fork          enable folking child processes to debug\n");
@@ -86,6 +89,9 @@ inline EmuArgs parse_args(int argc, const char *argv[]) {
     { "sim-run-ahead",     0, NULL,  0  },
 #ifdef DEBUG_TILELINK
     { "dump-tl",           0, NULL,  0  },
+#endif
+#ifdef FLASH_BIN
+    { "flash-img",           1, NULL,  0  },
 #endif
     { "seed",              1, NULL, 's' },
     { "max-cycles",        1, NULL, 'C' },
@@ -131,6 +137,7 @@ inline EmuArgs parse_args(int argc, const char *argv[]) {
             printf("[WARN] debug tilelink is not enabled at compile time, ignore --dump-tl\n");
 #endif
             continue;
+          case 11:  args.flash_img = optarg; continue;
         }
         // fall through
       default:
@@ -194,9 +201,10 @@ Emulator::Emulator(int argc, const char *argv[]):
 
   // init ram
 #ifdef FLASH_BIN
-  init_flash(args.image);
-#endif
+  init_flash(args.flash_image);
+#else
   init_ram(args.image);
+#endif
 
 #ifdef DEBUG_TILELINK
   // init logger
@@ -526,14 +534,10 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
 
   if(args.enable_fork){
     if(waitProcess) {
-<<<<<<< HEAD
-      printf("[%d] checkpoint process: dump wave complete, exit...\n",getpid());
-=======
       FORK_PRINTF("checkpoint process: dump wave complete, exit...\n")
       printf("--------------- CHECHPOINT INFO START(PID %d) ----------------\n", getpid());
       display_trapinfo();
       printf("---------------  CHECHPOINT INFO END(PID %d)  ----------------\n", getpid());
->>>>>>> master
       return cycles;
     } else if(trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED && trapCode != STATE_SIG){
       forkshm.info->endCycles = cycles;
