@@ -373,6 +373,11 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
       break;    
     }
 
+    if(waitProcess && cycles != 0 && cycles == forkshm.info->endCycles + STEP_FORWARD_CYCLES){
+      trapCode = STATE_ABORT;
+      break;  
+    }
+
     if (!max_cycle) {
       trapCode = STATE_LIMIT_EXCEEDED;
       break;
@@ -395,6 +400,7 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
     if (signal_num != 0) {
       trapCode = STATE_SIG;
     }
+
     if (trapCode != STATE_RUNNING) {
       break;
     }
@@ -520,15 +526,24 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
 
   if(args.enable_fork){
     if(waitProcess) {
+<<<<<<< HEAD
       printf("[%d] checkpoint process: dump wave complete, exit...\n",getpid());
+=======
+      FORK_PRINTF("checkpoint process: dump wave complete, exit...\n")
+      printf("--------------- CHECHPOINT INFO START(PID %d) ----------------\n", getpid());
+      display_trapinfo();
+      printf("---------------  CHECHPOINT INFO END(PID %d)  ----------------\n", getpid());
+>>>>>>> master
       return cycles;
-    } else if(trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED){
+    } else if(trapCode != STATE_GOODTRAP && trapCode != STATE_LIMIT_EXCEEDED && trapCode != STATE_SIG){
       forkshm.info->endCycles = cycles;
       forkshm.info->oldest = pidSlot.back();
       forkshm.info->notgood = true;
       forkshm.info->flag = true;
       waitpid(pidSlot.back(),&status,0);
+      printf("*************** MAIN INFO START(PID %d) ***************\n", getpid());
       display_trapinfo();
+      printf("*************** MAIN INFO END(PID %d)   ***************\n", getpid());
       return cycles;
     } else {
       //when reach maximum instruction, clear the checkpoint process
@@ -539,7 +554,9 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
         kill(temp, SIGKILL);
         slotCnt--;
       }
+
       display_trapinfo();
+      
       return cycles;
     } 
   }
