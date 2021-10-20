@@ -20,8 +20,8 @@ EMU_TOP      = SimTop
 
 EMU_CSRC_DIR = $(abspath ./src/test/csrc)
 EMU_CXXFILES = $(shell find $(EMU_CSRC_DIR) -name "*.cpp") $(SIM_CXXFILES) $(DIFFTEST_CXXFILES) $(PLUGIN_CXXFILES)
-EMU_CXXFLAGS += -std=c++11 -static -Wall -I$(EMU_CSRC_DIR) -I$(SIM_CSRC_DIR) -I$(DIFFTEST_CSRC_DIR) -I$(PLUGIN_CHEAD_DIR)
-EMU_CXXFLAGS += -DVERILATOR -DNUM_CORES=$(NUM_CORES)
+EMU_CXXFLAGS += -std=c++11 -static -Wall -I$(EMU_CSRC_DIR) -I$(SIM_CSRC_DIR) -I$(DIFFTEST_CSRC_DIR) -I$(PLUGIN_CHEAD_DIR) -I$(abspath $(SOC_DIR)/spiFlash/)
+EMU_CXXFLAGS += -DVERILATOR -Wno-maybe-uninitialized  -DNUM_CORES=$(NUM_CORES)
 EMU_CXXFLAGS += $(shell sdl2-config --cflags) -fPIE
 EMU_LDFLAGS  += -lpthread -lSDL2 -ldl -lz -lsqlite3
 
@@ -33,6 +33,7 @@ export OBJCACHE = ccache
 endif
 
 VEXTRA_FLAGS  = -I$(abspath $(BUILD_DIR)) --x-assign unique -O3 -CFLAGS "$(EMU_CXXFLAGS)" -LDFLAGS "$(EMU_LDFLAGS)"
+VEXTRA_FLAGS  += -I$(abspath $(SOC_DIR)/uart16550/rtl) -I$(abspath $(SOC_DIR)/spi/rtl)
 
 # Verilator trace support
 EMU_TRACE ?=
@@ -86,6 +87,7 @@ VERILATOR_FLAGS =                   \
   +define+RANDOMIZE_MEM_INIT        \
   +define+RANDOMIZE_GARBAGE_ASSIGN  \
   +define+RANDOMIZE_DELAY=0         \
+  --timescale "1ns/1ns"             \
   -Wno-STMTDLY -Wno-WIDTH           \
   $(VEXTRA_FLAGS)                   \
   --assert                          \

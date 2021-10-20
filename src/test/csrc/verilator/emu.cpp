@@ -34,6 +34,7 @@
 #include "compress.h"
 #include <list>
 #include "remote_bitbang.h"
+#include "spiFlash.h"
 
 extern remote_bitbang_t * jtag;
 
@@ -314,12 +315,22 @@ uint64_t Emulator::execute(uint64_t max_cycle, uint64_t max_instr) {
 
   difftest_init();
   init_device();
+  // flash_init("/home53/wkf/ysyx/nexus-am/apps/loader/build/flash-loader-riscv64-asic.bin");
+  // flash_init("/home53/wkf/ysyx/hello-loader.bin");
+  flash_init("/home53/wkf/ysyx/ysyxSoC-new/ysyx/program/bin/loader/rtthread-loader.bin");
+  // flash_init("/home53/wkf/ysyx/ysyxSoC-new/ysyx/program/bin/flash/rtthread-flash.bin");
   if (args.enable_diff) {
     init_goldenmem();
     init_nemuproxy();
   }
   if(args.enable_runahead){
     runahead_init();
+  }
+
+  DynamicSimulatorConfig nemu_config;
+  nemu_config.debug_difftest = true;
+  for (int i = 0; i < NUM_CORES; i++) {
+    difftest[i]->proxy->update_config(&nemu_config);
   }
 
 #ifdef DEBUG_REFILL

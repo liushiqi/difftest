@@ -45,15 +45,17 @@ REMOTE ?= localhost
 
 sim-verilog: $(SIM_TOP_V)
 
+SOC_DIR = ../../ysyxSoC/src/main/resources/ysyx-peripheral
+
 SIM_CSRC_DIR = $(abspath ./src/test/csrc/common)
 SIM_CXXFILES = $(shell find $(SIM_CSRC_DIR) -name "*.cpp")
 
 DIFFTEST_CSRC_DIR = $(abspath ./src/test/csrc/difftest)
-DIFFTEST_CXXFILES = $(shell find $(DIFFTEST_CSRC_DIR) -name "*.cpp")
+DIFFTEST_CXXFILES = $(shell find $(DIFFTEST_CSRC_DIR) -name "*.cpp") $(abspath $(SOC_DIR)/spiFlash/spiFlash.cpp)
 
 PLUGIN_CHEAD_DIR = $(abspath ./src/test/csrc/plugin/include)
-
-SIM_VSRC = $(shell find ./src/test/vsrc/common -name "*.v" -or -name "*.sv")
+EMU_SOC_V = $(shell find $(SOC_DIR) -name '*.v')
+SIM_VSRC = $(shell find ./src/test/vsrc/common -name "*.v" -or -name "*.sv") $(EMU_SOC_V)
 
 include verilator.mk
 include vcs.mk

@@ -21,7 +21,7 @@ FILE *flash_fp = NULL;
 
 extern "C" {
 
-void flash_read(uint32_t addr, uint64_t *data) {
+void emu_flash_read(uint32_t addr, uint64_t *data) {
 #ifdef USE_BIN
   fseek(flash_fp, addr, SEEK_SET);
   fread(data, 8, 1, flash_fp);
